@@ -36,7 +36,8 @@ K256 = [
 # Before hash computation begins for each of the secure hash algorithms, the initial hash value,
 # H(0), must be set. The size and number of words in H(0) depends on the message digest size.
 # For SHA-256, the initial hash value, H(0), shall consist of the following eight 32-bit words, in hex:
-INITIAL_HASH = [0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]
+INITIAL_HASH = [0x6A09E667, 0xBB67AE85, 0x3C6EF372,
+                0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]
 
 
 def shift_right(x, n):
@@ -148,7 +149,8 @@ def get_buffer(s):
 
 
 def zeros(count):
-    return [0] * count
+    returnValue = [0] * count
+    return returnValue
 
 
 class SHA256(object):
@@ -162,21 +164,34 @@ class SHA256(object):
         if not string:
             return
         buff = get_buffer(string)
+        # BUFFER IS JUST THE STRING
+        # print("BUFF")
+        # print(buff)
         count = len(buff)
         count_lo = (self._sha['count_lo'] + (count << 3)) & 0xffffffff
+        # Count is just the count
+        # print("COUNT LO")
+        # print(count_lo)
         if count_lo < self._sha['count_lo']:
             self._sha['count_hi'] += 1
         self._sha['count_lo'] = count_lo
         self._sha['count_hi'] += (count >> 29)
 
+        print("BEFORE INITIALIZING LOOP")
         buffer_idx = 0
         while count >= BLOCK_SIZE:
-            self._sha['data'] = [ord(c) for c in buff[buffer_idx:buffer_idx + BLOCK_SIZE]]
+            print("WITHIN INITIALIZING LOOP")
+            self._sha['data'] = [
+                ord(c) for c in buff[buffer_idx:buffer_idx + BLOCK_SIZE]]
             count -= BLOCK_SIZE
             buffer_idx += BLOCK_SIZE
-            self._sha['digest'] = mutate(self._sha['data'], self._sha['digest'])
+            self._sha['digest'] = mutate(
+                self._sha['data'], self._sha['digest'])
 
-        self._sha['data'][:count] = [ord(c) for c in buff[buffer_idx:buffer_idx + count]]
+        print("AFTER INITIALIZING LOOP")
+        print(self._sha['digest'])
+        self._sha['data'][:count] = [
+            ord(c) for c in buff[buffer_idx:buffer_idx + count]]
 
     def hexdigest(self):
         """
@@ -185,8 +200,16 @@ class SHA256(object):
         the 4-bit string “0111”, and the hex digit “a” represents the 4-bit string “1010”.
         """
         hash = self._sha.copy()
+        print("ORIGINAL HASH")
+        print(hash['data'])
+        print(hash['digest'])
         count = (hash['count_lo'] >> 3) & 0x3f
+        print("COUNT LO")
+        print(count)
         hash['data'][count] = 0x80
+        print("DATA")
+        print(hash['data'])
+
         count += 1
         if count > BLOCK_SIZE - 8:
             # fill with zero bytes after the count
@@ -197,29 +220,151 @@ class SHA256(object):
         else:
             hash['data'] = hash['data'][:count] + zeros(BLOCK_SIZE - count)
 
+        print("FINAL HASH DATA BEFORE LOOP")
+        print(hash['data'])
+
         for idx, shift in zip(range(56, 64), range(24, -1, -8) * 2):
-            hash['data'][idx] = (hash['count_hi' if idx < 60 else 'count_lo'] >> shift) & 0xff
+            print("HASH COUNT HI")
+            hash['data'][idx] = (
+                hash['count_hi' if idx < 60 else 'count_lo'] >> shift) & 0xff
+            print(hash['count_hi'])
+            print(hash['count_lo'])
+            print(str(idx < 60))
+            print("NEW HASH AT INDEX #" + str(idx))
+            print(hash['data'])
+            print(0xffffffff)
 
         hash['digest'] = mutate(hash['data'], hash['digest'])
 
         digest = []
+        print("HASH DIGEST")
+        print(hash['digest'])
+
         for i in hash['digest']:
-            for shift in xrange(24, -1, -8):
-                digest.append((i >> shift) & 0xff)
-        return ''.join(['%.2x' % i for i in digest[:DIGEST_SIZE]])
+            print(i)
+
+            values = []
+            for shift in range(24, -1, -8):
+                
+                appendingValue = (i >> shift) & 0xff
+                digest.append(appendingValue)
+                values.append(bin(appendingValue))
+
+            #print(values)
+            #print(bin(0xff))
+                # print(digest)
+
+        print("\n\nDIGEST")
+        print(digest)
+
+        # for i in digest[:DIGEST_SIZE]:
+        # print("INDEX "+str(i))
+        # print('%.2x' % i)
+
+        returnValue = ''.join([('%.2x' % i) for i in digest])
+        print("\n\nRETURN VALUE")
+        print(returnValue)
+        return returnValue
+
+
+def shaString():
+    print("HASHING inputSTR")
+    inputStr = 'omfg'
+    output = SHA256(inputStr).hexdigest()
+    print("OUTPUT")
+    print(output)
+    deSHA(output)
+
+
+def deSHA(sha):
+    print("FIRST BACK TO LIST OF NUMBERS")
+    fullListOfNumbers = SHAStringToList(sha)
+    groupedNumbers = groupSHANumbers(fullListOfNumbers)
+    hashedNumbers = getHASHValues(groupedNumbers)
+    print(groupedNumbers)
+
+
+def getHASHValues(allValues):
+    hashValues = list()
+    for valueSet in allValues:
+        print(valueSet)
+        index = 0
+        valuesToAdd = []
+        for shift in range(24, -1, -8):
+            print(type(valueSet[index]))
+            valuesToAdd.append((valueSet[index]<<shift) & 0xffffffff)
+            index+=1
+        hashValues.append(sum(valuesToAdd))
+    
+    print(hashValues)
+  
+    return hashValues
+    # for i in hash['digest']:
+    #         print(i)
+    #         for shift in range(24, -1, -8):
+    #             appendingValue = (i >> shift) & 0xff
+    #             digest.append(appendingValue)
+
+
+def groupSHANumbers(listOfUngroupedNumbers):
+    print(listOfUngroupedNumbers)
+    groupedNumbers = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [
+        0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+    # [[0]*4]*int(len(listOfUngroupedNumbers)/4)
+    index = 0
+    # print(groupedNumbers)
+    for i in range(len(listOfUngroupedNumbers)/4):
+        #print("AT INDEX")
+        # print(i)
+        for j in range(4):
+            # print(listOfUngroupedNumbers[index])
+            # print(i)
+            groupedNumbers[i][j] = (listOfUngroupedNumbers[index])
+            # print(groupedNumbers)
+            index += 1
+
+    return groupedNumbers
+
+
+def SHAStringToList(sha):
+    listOfChars = list(sha)
+    groupedChars = list()
+    for i in range(len(listOfChars)):
+        if i % 2 == 0:
+            # print("EVEN")
+            groupedChars.append(str(listOfChars[i])+str(listOfChars[i+1]))
+
+    # print("GROUPED CHARS")
+
+    # print(groupedChars)
+    numbersFromChars = map(SHAStrToInt, groupedChars)
+
+    return numbersFromChars
+
+
+def SHAStrToInt(s):
+    return int(s, base=16)
 
 
 def test():
     string = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'
     assert 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' == SHA256().hexdigest()
-    assert 'a58dd8680234c1f8cc2ef2b325a43733605a7f16f288e072de8eae81fd8d6433' == SHA256(string).hexdigest()
-    assert 'db7b94909697ac91e9f167159b99a1d2612b5cf4b3086a72cb6ac0206c4bd47c' == SHA256(string * 7).hexdigest()
-    assert '1aa4458852eefd69560827a035db9df11491abdae3483a71d1707f05e085e682' == SHA256('hello⊕').hexdigest()
+    assert 'a58dd8680234c1f8cc2ef2b325a43733605a7f16f288e072de8eae81fd8d6433' == SHA256(
+        string).hexdigest()
+    assert 'db7b94909697ac91e9f167159b99a1d2612b5cf4b3086a72cb6ac0206c4bd47c' == SHA256(
+        string * 7).hexdigest()
+    assert '1aa4458852eefd69560827a035db9df11491abdae3483a71d1707f05e085e682' == SHA256(
+        'hello⊕').hexdigest()
     long_text = string * 999
-    assert '5e4e5fcc4c89b7b1b6567d81187e83c99cd7c04ca77a093ed74e35a08046d519' == SHA256(long_text).hexdigest()
-    assert 'c7ae9b6438e9dfccfd486fabed3c08d6f63ae559ef09b2fe084a38dbc46fae7c' == SHA256(u'\uE52D').hexdigest()
-    print 'ok'
+    assert '5e4e5fcc4c89b7b1b6567d81187e83c99cd7c04ca77a093ed74e35a08046d519' == SHA256(
+        long_text).hexdigest()
+    assert 'c7ae9b6438e9dfccfd486fabed3c08d6f63ae559ef09b2fe084a38dbc46fae7c' == SHA256(
+        u'\uE52D').hexdigest()
+    print('ok')
 
 
+# if __name__ == "__main__":
+#     test()
 if __name__ == "__main__":
-    test()
+    shaString()
+    #test()
