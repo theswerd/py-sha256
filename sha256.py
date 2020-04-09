@@ -98,14 +98,66 @@ def gamma1(x):
     return rotate_right(x, 17) ^ rotate_right(x, 19) ^ shift_right(x, 10)
 
 
+def deMutate(digest):
+    # for x,y in enumerate(digest):
+    # print(x)
+    # print(y)
+    return 0
+
+
 def mutate(data, digest):
-    digest_copy = digest[:]
+
+    original_digest_copy = digest[:]
 
     # 6.2.2:  The SHA-256 hash computation uses functions and constants previously
     # defined in Sec. 4.1.2 and Sec. 4.2.2, respectively.
     # Addition (+) is performed modulo 232.
 
     # Prepare the message schedule, {Wt}:
+    print("DATA")
+    print(data)
+
+    original_digest_copy = mixValuesIntoHashCopy(original_digest_copy, data)
+
+    returnList = list()
+    for idx, x in enumerate(digest):
+        print
+        appendingValue = (x + original_digest_copy[idx]) & 0xffffffff
+        returnList.append(appendingValue)
+        print(idx)
+        print(bin(0xffffffff))
+        print(bin(x + original_digest_copy[idx]))
+        print(bin(appendingValue))
+
+    return returnList
+    # return [(x + digest_copy[idx]) & 0xffffffff for idx, x in enumerate(digest)]
+
+
+def get_buffer(s):
+    if isinstance(s, str):
+        return s
+    if isinstance(s, str):
+        try:
+            return str(s)
+        except UnicodeEncodeError:
+            pass
+    return memoryview(s)
+
+def deMixValuesFromHashCopy(mixedShaCopy):
+    print("HOLY SHIT")
+    # w = []
+    # for i in range(0, 16):
+    #     w.append(sum([
+    #         data[4 * i + 0] << 24,
+    #         data[4 * i + 1] << 16,
+    #         data[4 * i + 2] << 8,
+    #         data[4 * i + 3] << 0,
+    #     ]))
+    # for i in range(16, 64):
+    #     sum_ = gamma1(w[i - 2]) + w[i - 7] + gamma0(w[i - 15]) + w[i - 16]
+    #     w.append(sum_ & 0xffffffff)
+
+def mixValuesIntoHashCopy(hashListCopy, data):
     w = []
     for i in range(0, 16):
         w.append(sum([
@@ -114,43 +166,37 @@ def mutate(data, digest):
             data[4 * i + 2] << 8,
             data[4 * i + 3] << 0,
         ]))
-
     for i in range(16, 64):
         sum_ = gamma1(w[i - 2]) + w[i - 7] + gamma0(w[i - 15]) + w[i - 16]
         w.append(sum_ & 0xffffffff)
 
-    for idx in xrange(0, -64, -1):
+    for idx in range(0, -64, -1):
         i = abs(idx % 8)
-
+        print("INDEXX")
+        print(idx)
         # Initialize the eight working variables, a, b, c, d, e, f, g, and h  with the (i-1)st hash value.
         # W is the prepared message schedule.
-        positions = [(i + x) % 8 for x in xrange(8)]
+        positions = [(i + x) % 8 for x in range(8)]
+        print("POSITIONS")
+        print(positions)
         d_position = positions[3]
         h_position = positions[-1]
-        a, b, c, d, e, f, g, h = [digest_copy[pos] for pos in positions]
-
+        a, b, c, d, e, f, g, h = [hashListCopy[pos] for pos in positions]
+        print("HMM")
+        print(idx)
+        print(w[abs(idx)])
         t1 = h + sigma1(e) + choose(e, f, g) + K256[abs(idx)] + w[abs(idx)]
         t2 = sigma0(a) + majority(a, b, c)
-        digest_copy[d_position] = (d + t1) & 0xffffffff
-        digest_copy[h_position] = (t1 + t2) & 0xffffffff
-
-    return [(x + digest_copy[idx]) & 0xffffffff for idx, x in enumerate(digest)]
-
-
-def get_buffer(s):
-    if isinstance(s, str):
-        return s
-    if isinstance(s, unicode):
-        try:
-            return str(s)
-        except UnicodeEncodeError:
-            pass
-    return buffer(s)
+        hashListCopy[d_position] = (d + t1) & 0xffffffff
+        hashListCopy[h_position] = (t1 + t2) & 0xffffffff
+    return hashListCopy
 
 
 def zeros(count):
     returnValue = [0] * count
     return returnValue
+
+# 2447ae19112009c0d536cb90fe8bca9af5d629075d5e7c31283377b119d9b952 -- correct value of omfg
 
 
 class SHA256(object):
@@ -235,31 +281,18 @@ class SHA256(object):
             print(0xffffffff)
 
         hash['digest'] = mutate(hash['data'], hash['digest'])
+        # EVERYTHING AFTER THIS POINT SOLVED
 
         digest = []
-        print("HASH DIGEST")
-        print(hash['digest'])
 
         for i in hash['digest']:
-            print(i)
 
             values = []
             for shift in range(24, -1, -8):
-                
+
                 appendingValue = (i >> shift) & 0xff
                 digest.append(appendingValue)
                 values.append(bin(appendingValue))
-
-            #print(values)
-            #print(bin(0xff))
-                # print(digest)
-
-        print("\n\nDIGEST")
-        print(digest)
-
-        # for i in digest[:DIGEST_SIZE]:
-        # print("INDEX "+str(i))
-        # print('%.2x' % i)
 
         returnValue = ''.join([('%.2x' % i) for i in digest])
         print("\n\nRETURN VALUE")
@@ -281,23 +314,20 @@ def deSHA(sha):
     fullListOfNumbers = SHAStringToList(sha)
     groupedNumbers = groupSHANumbers(fullListOfNumbers)
     hashedNumbers = getHASHValues(groupedNumbers)
-    print(groupedNumbers)
+    deMutated = deMutate(hashedNumbers)
+    print(deMutated)
 
 
 def getHASHValues(allValues):
     hashValues = list()
     for valueSet in allValues:
-        print(valueSet)
         index = 0
         valuesToAdd = []
         for shift in range(24, -1, -8):
-            print(type(valueSet[index]))
-            valuesToAdd.append((valueSet[index]<<shift) & 0xffffffff)
-            index+=1
+            valuesToAdd.append((valueSet[index] << shift) & 0xffffffff)
+            index += 1
         hashValues.append(sum(valuesToAdd))
-    
-    print(hashValues)
-  
+
     return hashValues
     # for i in hash['digest']:
     #         print(i)
@@ -367,4 +397,4 @@ def test():
 #     test()
 if __name__ == "__main__":
     shaString()
-    #test()
+    # test()
